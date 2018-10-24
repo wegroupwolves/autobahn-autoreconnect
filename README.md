@@ -1,73 +1,42 @@
 # autobahn-autoreconnect
-Python Autobahn runner with auto-reconnect feature
 
-## Installation
-```bash
-$pip install autobahn-autoreconnect 
+The old project from isra17 was outdated and did not support python3.5 and above.
+This is an updated library that supports python3.5 and above.
+
+## DISCLAIMER
+
+This is a modified version of gitub.com/isra17/autobahn-autoreconnect.
+We respect the original owner(s) and will not claim ownership of this project.
+
+## Install
+
 ```
-
-## Dependencies
-autobahn >= 14.0.0
+pip install git+https://github.com/wegroupwolves/autobahn-autoreconnect
+```
 
 ## Usage
-Just import the `ApplicationRunner` from `autobahn_autoreconnect` and it works as a drop in replacement for
-`autobahn.asyncio.wamp.Application Runner`.
 
-```python
-from autobahn.asyncio.wamp import ApplicationSession
-# from autobahn.asyncio.wamp import ApplicationRunner
-from autobahn_autoreconnect import ApplicationRunner
-
-
-class MyComponent(ApplicationSession):
-    # awsesome wamp stuff 
-  
-if __name__ == '__main__':
-    runner = ApplicationRunner("ws://localhost:8080/ws", "realm1")
-    runner.run(MyComponent)
 ```
+from AUTOBAHN_RECONNECT_TODO_LIBRARY import BackoffStrategy, ApplicationRunner
 
-### Retry Strategy
-The default retry strategy is the `BackoffStrategy` based on an increasing time interval starting at 0.5 seconds and doubling 
-until a maximum of 512 seconds before giving up. If you want to override the defaults you can pass in your own `BackoffStrategy` like so:
+import asyncio
 
-```python
-from autobahn_autoreconnect import BackoffStrategy
+from config import CROSSBAR_REALM, CROSSBAR_IP
 
-# start with a 10s delay and increase by a factor of 10 until 1000s
-# This strategy will wait 10s, 100s and 1000s and then stop retrying
-strategy = BackoffStrategy(initial_interval=10, max_interval=1000 factor=10)
-runner = ApplicationRunner("ws://localhost:8080/ws", "realm1", retry_strategy=strategy)
-```
+from crossbar_connection import Connection
 
-### Custom Retry Strategies
-You can also implement you own retry class by inheriting from `autobahn_autoreconnect.IReconnectStrategy`.
+strategy = BackoffStrategy(initial_interval=20, max_interval=40, factor=2)
+r = ApplicationRunner(CROSSBAR_IP, CROSSBAR_REALM, retry_strategy=strategy)
 
-For example, to retry every second for 100 seconds we could do something like:
+if __name__ == "__main__":
 
-```python
-from autobahn_autoreconnect import IReconnectStrategy
+    try:
 
-class OneSecondStrategy(IReconnectStrategy):
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(r.run(Client), loop=loop)
+        loop.run_forever()
 
-    def __init__(self):
-        self._retry_counter = 0
-  
-    def get_retry_interval(self):
-        """Return interval, in seconds, to wait between retries"""
-        return 1 
-
-    def reset_retry_interval(self):
-        """Called before the first time we try to reconnect"""
-        self._retry_counter = 0
-
-    def increase_retry_interval(self):
-        """Called every time a retry attempt fails"""
-        self._retry_counter += 1
-    
-    def retry(self):
-        """Returning True will keep retrying, False will stop retrying"""
-        return self._retry_counter < 100
+    except Exception as e:
         
-runner = ApplicationRunner("ws://localhost:8080/ws", "realm1", retry_strategy=OneSecondStrategy())
+        print(e)
 ```

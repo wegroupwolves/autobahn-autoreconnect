@@ -2,12 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='autobahn-autoreconnect',
-    version='0.0.3',
+    version='0.0.1',
 
     description='Python Autobahn runner with auto-reconnect feature',
-    url='https://github.com/isra17/autobahn-autoreconnect',
+    url='https://github.com/wegroupwolves/autobahn-autoreconnect',
     author='isra17',
-    author_email='isra017@gmail.com',
+    author_email='it@wegroup.be',
     license='LGPL2',
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),

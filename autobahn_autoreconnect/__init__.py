@@ -1,10 +1,10 @@
-# coding=utf-8
 ###############################################################################
 #
 # The MIT License (MIT)
 #
 # Original work Copyright (c) Tavendo GmbH
 # Modified work Copyright 2016 Israël Hallé
+# Modified work Copyright 2018 WeGroup
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,6 @@
 
 import signal
 
-from autobahn.wamp import protocol
 from autobahn.wamp.types import ComponentConfig
 try:
     from autobahn.websocket.protocol import parseWsUrl
@@ -38,8 +37,9 @@ from autobahn.asyncio.websocket import WampWebSocketClientFactory
 
 import asyncio
 import txaio
-
 txaio.use_asyncio()
+
+from autobahn.wamp import protocol
 
 class ExceededRetryCount(Exception):
     pass
@@ -144,7 +144,7 @@ class ApplicationRunner(object):
             self._ssl = ssl
 
 
-    def run(self, make):
+    async def run(self, make):
         """
         Run the application component.
         :param make: A factory that produces instances of :class:`autobahn.asyncio.wamp.ApplicationSession`
@@ -167,42 +167,27 @@ class ApplicationRunner(object):
         self._transport_factory = WampWebSocketClientFactory(_create_app_session, url=self._url, serializers=self._serializers)
 
         if self._auto_ping_interval is not None and self._auto_ping_timeout is not None:
+
             self._transport_factory.setProtocolOptions(openHandshakeTimeout=self._open_handshake_timeout, autoPingInterval=self._auto_ping_interval, autoPingTimeout=self._auto_ping_timeout)
 
-        txaio.use_asyncio()
-        txaio.config.loop = self._loop
-
-        asyncio.async(self._connect(), loop=self._loop)
-
-        try:
-            self._loop.add_signal_handler(signal.SIGTERM, self.stop)
-        except NotImplementedError:
-             # Ignore if not implemented. Means this program is running in windows.
-            pass
-
-        try:
-            self._loop.run_forever()
-        except KeyboardInterrupt:
-            # wait until we send Goodbye if user hit ctrl-c
-            # (done outside this except so SIGTERM gets the same handling)
-            pass
-
-        self._closing = True
-
-        if self._active_protocol and self._active_protocol._session:
-            self._loop.run_until_complete(self._active_protocol._session.leave())
-        self._loop.close()
+        return await self._connect()
 
     @asyncio.coroutine
     def _connect(self):
+
         self._active_protocol = None
         self._retry_strategy.reset_retry_interval()
+
         while True:
+
             try:
-                _, protocol = yield from self._loop.create_connection(self._transport_factory, self._host, self._port, ssl=self._ssl)
+
+                transport, protocol = yield from self._loop.create_connection(self._transport_factory, self._host, self._port, ssl=self._ssl)
                 protocol.is_closed.add_done_callback(self._reconnect)
                 self._active_protocol = protocol
-                return
+
+                return (transport, protocol)
+
             except OSError:
                 print('Connection failed')
                 if self._retry_strategy.retry():
@@ -217,12 +202,14 @@ class ApplicationRunner(object):
                 self._retry_strategy.increase_retry_interval()
 
     def _reconnect(self, f):
-        # Reconnect
+
         print('Connection lost')
+
         if not self._closing:
+
             print('Reconnecting')
-            asyncio.async(self._connect(), loop=self._loop)
+            asyncio.ensure_future(self._connect(), loop=self._loop)
 
     def stop(self, *args):
-        self._loop.stop()
 
+        self._loop.stop()
