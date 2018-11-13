@@ -208,8 +208,7 @@ class ApplicationRunner(object):
         if not self._closing:
 
             print('Reconnecting')
-            # asyncio.ensure_future(self._connect(), loop=self._loop)
-            asyncio.wait(self._connect(), loop=self._loop)
+            asyncio.ensure_future(self._connect(), loop=self._loop)
 
     def stop(self, *args):
 
